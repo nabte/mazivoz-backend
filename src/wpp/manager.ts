@@ -1,9 +1,11 @@
-import * as wppconnect from '@wppconnect-team/wppconnect';
 import path from 'path';
 import fs from 'fs';
 import { Logger } from '../utils/logger';
 import { SessionStatus, WPPClient, CreateSessionOptions } from './types';
 import db from '../config/database';
+
+// Importar wppconnect usando require para evitar problemas de importación
+const wppconnect = require('@wppconnect-team/wppconnect');
 
 export class WPPManager {
   private sessions: Map<string, any> = new Map();
@@ -84,7 +86,7 @@ export class WPPManager {
     try {
       const client = await wppconnect.create({
         session: instanceName,
-        catchQR: (base64Qr, asciiQR) => {
+        catchQR: (base64Qr: string, asciiQR: string) => {
           Logger.info(`[${instanceName}] 📱 QR generado - Listo para escanear`);
           status.qrCode = base64Qr;
           status.status = 'scanning';
@@ -105,7 +107,7 @@ export class WPPManager {
           console.log(asciiQR);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         },
-        statusFind: (statusSession) => {
+        statusFind: (statusSession: string) => {
           Logger.info(`[${instanceName}] 🔄 Cambio de estado: ${statusSession}`);
           
           if (statusSession === 'isLogged') {

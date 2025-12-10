@@ -188,12 +188,15 @@ export class MessageQueueProcessor {
           await client.sendImage(phoneNumber, tempPath, finalMessage);
           break;
         case 'video':
-          Logger.info(`[${message.instanceName}] Enviando video para mensaje ${message.id}`);
-          await client.sendVideo(phoneNumber, tempPath, finalMessage);
+          // Enviar video como archivo (documento) en lugar de como video
+          Logger.info(`[${message.instanceName}] Enviando video como archivo para mensaje ${message.id}`);
+          const videoFileName = path.basename(message.mediaUrl || 'video.mp4');
+          await client.sendFile(phoneNumber, tempPath, videoFileName, finalMessage);
           break;
         case 'document':
           Logger.info(`[${message.instanceName}] Enviando documento para mensaje ${message.id}`);
-          await client.sendFile(phoneNumber, tempPath, undefined, finalMessage);
+          const docFileName = path.basename(message.mediaUrl || 'document.pdf');
+          await client.sendFile(phoneNumber, tempPath, docFileName, finalMessage);
           break;
         default:
           throw new Error(`Tipo de multimedia no soportado: ${message.mediaType}`);

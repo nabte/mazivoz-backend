@@ -1,4 +1,4 @@
-import { create } from '@wppconnect-team/wppconnect';
+import wppconnect from '@wppconnect-team/wppconnect';
 import path from 'path';
 import fs from 'fs';
 import { Logger } from '../utils/logger';
@@ -82,7 +82,7 @@ export class WPPManager {
     this.sessionStatuses.set(instanceName, status);
 
     try {
-      const client = await create({
+      const client = await wppconnect.create({
         session: instanceName,
         catchQR: (base64Qr, asciiQR) => {
           Logger.info(`[${instanceName}] 📱 QR generado - Listo para escanear`);

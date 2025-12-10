@@ -401,6 +401,34 @@ router.get('/messages/queue', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/queue/stats
+ * Obtener estadísticas de la cola de mensajes
+ */
+router.get('/queue/stats', async (req: Request, res: Response) => {
+  try {
+    const stats = queueProcessor.getStats();
+    const queueSizes: Record<string, number> = {};
+    
+    // Obtener tamaños de cola por instancia
+    const allSessions = wppManager.getAllSessions();
+    for (const session of allSessions) {
+      queueSizes[session.instanceName] = queueProcessor.getQueueSize(session.instanceName);
+    }
+    
+    res.json({
+      success: true,
+      stats: {
+        ...stats,
+        queue_sizes: queueSizes
+      }
+    });
+  } catch (error: any) {
+    Logger.error('Error al obtener estadísticas de cola', error);
+    res.status(500).json({ error: error.message || 'Error al obtener estadísticas' });
+  }
+});
+
+/**
  * GET /api/admin/dashboard
  * Panel de administración con estado de todas las sesiones
  */

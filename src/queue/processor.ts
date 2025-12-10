@@ -121,12 +121,15 @@ export class MessageQueueProcessor {
 
       // Enviar mensaje según tipo
       if (message.mediaUrl && message.mediaType) {
+        Logger.info(`[${instanceName}] 📎 Enviando ${message.mediaType} a ${phoneOnly}`);
         await this.sendMediaMessage(client, phoneNumber, message, finalMessage);
+        Logger.info(`[${instanceName}] ✅ ${message.mediaType} enviado exitosamente a ${phoneOnly}`);
       } else {
         // Delay aleatorio adicional para texto (1-2.5 segundos como en n8n)
         const textDelay = Math.floor(1000 + Math.random() * 1500);
         await new Promise(resolve => setTimeout(resolve, textDelay));
         await client.sendText(phoneNumber, finalMessage);
+        Logger.info(`[${instanceName}] ✅ Mensaje de texto enviado exitosamente a ${phoneOnly}`);
       }
 
       Logger.info(`[${instanceName}] ✅ Mensaje ${message.id} enviado exitosamente a ${phoneOnly}`);
@@ -184,19 +187,22 @@ export class MessageQueueProcessor {
 
       switch (message.mediaType) {
         case 'image':
-          Logger.info(`[${message.instanceName}] Enviando imagen para mensaje ${message.id}`);
+          Logger.info(`[${message.instanceName}] 📷 Enviando imagen para mensaje ${message.id} desde ${tempPath}`);
           await client.sendImage(phoneNumber, tempPath, finalMessage);
+          Logger.info(`[${message.instanceName}] ✅ Imagen enviada exitosamente`);
           break;
         case 'video':
           // Enviar video como archivo (documento) en lugar de como video
-          Logger.info(`[${message.instanceName}] Enviando video como archivo para mensaje ${message.id}`);
+          Logger.info(`[${message.instanceName}] 🎥 Enviando video como archivo para mensaje ${message.id} desde ${tempPath}`);
           const videoFileName = path.basename(message.mediaUrl || 'video.mp4');
           await client.sendFile(phoneNumber, tempPath, videoFileName, finalMessage);
+          Logger.info(`[${message.instanceName}] ✅ Video enviado como archivo exitosamente`);
           break;
         case 'document':
-          Logger.info(`[${message.instanceName}] Enviando documento para mensaje ${message.id}`);
+          Logger.info(`[${message.instanceName}] 📄 Enviando documento para mensaje ${message.id} desde ${tempPath}`);
           const docFileName = path.basename(message.mediaUrl || 'document.pdf');
           await client.sendFile(phoneNumber, tempPath, docFileName, finalMessage);
+          Logger.info(`[${message.instanceName}] ✅ Documento enviado exitosamente`);
           break;
         default:
           throw new Error(`Tipo de multimedia no soportado: ${message.mediaType}`);

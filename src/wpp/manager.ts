@@ -1,4 +1,4 @@
-import wppconnect from '@wppconnect-team/wppconnect';
+import { create } from '@wppconnect-team/wppconnect';
 import path from 'path';
 import fs from 'fs';
 import { Logger } from '../utils/logger';
@@ -82,9 +82,9 @@ export class WPPManager {
     this.sessionStatuses.set(instanceName, status);
 
     try {
-      const client = await wppconnect.create(
-        instanceName,
-        (base64Qr, asciiQR) => {
+      const client = await create({
+        session: instanceName,
+        catchQR: (base64Qr, asciiQR) => {
           Logger.info(`[${instanceName}] 📱 QR generado - Listo para escanear`);
           status.qrCode = base64Qr;
           status.status = 'scanning';
@@ -105,7 +105,7 @@ export class WPPManager {
           console.log(asciiQR);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         },
-        (statusSession) => {
+        statusFind: (statusSession) => {
           Logger.info(`[${instanceName}] 🔄 Cambio de estado: ${statusSession}`);
           
           if (statusSession === 'isLogged') {
@@ -114,13 +114,21 @@ export class WPPManager {
             status.qrCode = undefined;
             this.sessionStatuses.set(instanceName, status);
             
-            // Actualizar BD - el número se puede obtener después desde el perfil
-            db.query(
-              'UPDATE instances SET status = ?, qr_code = NULL WHERE instance_name = ?',
-              ['connected', instanceName]
-            ).then(() => {
-              Logger.info(`[${instanceName}] ✅ Estado actualizado en BD`);
-            }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al actualizar estado en BD`, err));
+            // Obtener número de teléfono
+            client.getMe().then((me: any) => {
+              const phone = me.id.user;
+              Logger.info(`[${instanceName}] 📱 Número de teléfono obtenido: ${phone}`);
+              status.phone = phone;
+              this.sessionStatuses.set(instanceName, status);
+              
+              // Actualizar BD con el número
+              db.query(
+                'UPDATE instances SET status = ?, telefono = ?, qr_code = NULL WHERE instance_name = ?',
+                ['connected', phone, instanceName]
+              ).then(() => {
+                Logger.info(`[${instanceName}] ✅ Estado actualizado en BD`);
+              }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al actualizar estado en BD`, err));
+            }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al obtener número`, err));
           } else if (statusSession === 'notLogged') {
             Logger.info(`[${instanceName}] ⏳ Esperando escaneo de QR`);
             status.status = 'scanning';
@@ -132,27 +140,24 @@ export class WPPManager {
             this.sessionStatuses.set(instanceName, status);
           }
         },
-        undefined, // onLoadingScreen
-        undefined, // catchLinkCode
-        {
-          headless: true,
-          debug: false,
-          useChrome: true,
-          puppeteerOptions: {
-            executablePath: process.env.CHROME_PATH || undefined,
-            args: [
-              '--no-sandbox',
-              '--disable-setuid-sandbox',
-              '--disable-dev-shm-usage',
-              '--disable-accelerated-2d-canvas',
-              '--no-first-run',
-              '--no-zygote',
-              '--disable-gpu'
-            ]
-          },
-          autoClose: 0 // Nunca cerrar automáticamente
-        }
-      );
+        headless: 'new',
+        debug: false,
+        useChrome: true,
+        puppeteerOptions: {
+          executablePath: process.env.CHROME_PATH || undefined,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+          ]
+        },
+        sessionDataPath: this.sessionsPath,
+        autoClose: 0 // Nunca cerrar automáticamente
+      });
 
       // Manejar desconexión después de crear el cliente
       client.onStateChange((state: string) => {

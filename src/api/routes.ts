@@ -17,29 +17,41 @@ router.post('/instances', async (req: Request, res: Response) => {
   try {
     const { instance_name, user_id } = req.body;
 
+    Logger.info(`📨 POST /api/instances - instance_name: ${instance_name}, user_id: ${user_id}`);
+
     if (!instance_name) {
       return res.status(400).json({ error: 'instance_name es requerido' });
     }
 
     // Verificar si ya existe en BD
-    const [existing] = await db.query(
-      'SELECT id FROM instances WHERE instance_name = ?',
-      [instance_name]
-    ) as any[];
+    try {
+      const [existing] = await db.query(
+        'SELECT id FROM instances WHERE instance_name = ?',
+        [instance_name]
+      ) as any[];
 
-    if (existing.length > 0) {
-      // Instancia ya existe, intentar recuperar sesión
-      const status = await wppManager.createSession({ instanceName: instance_name, userId: user_id });
-      return res.json({
-        success: true,
-        instance_name: instance_name,
-        status: status.status,
-        qr_code: status.qrCode,
-        message: 'Instancia recuperada'
+      if (existing.length > 0) {
+        Logger.info(`Instancia ${instance_name} ya existe en BD, recuperando sesión...`);
+        // Instancia ya existe, intentar recuperar sesión
+        const status = await wppManager.createSession({ instanceName: instance_name, userId: user_id });
+        return res.json({
+          success: true,
+          instance_name: instance_name,
+          status: status.status,
+          qr_code: status.qrCode,
+          message: 'Instancia recuperada'
+        });
+      }
+    } catch (dbError: any) {
+      Logger.error('Error al consultar BD', dbError);
+      return res.status(500).json({ 
+        error: 'Error al consultar base de datos', 
+        details: dbError.message 
       });
     }
 
     // Crear sesión
+    Logger.info(`Creando nueva sesión para ${instance_name}`);
     const status = await wppManager.createSession({ instanceName: instance_name, userId: user_id });
 
     res.json({
@@ -51,7 +63,11 @@ router.post('/instances', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     Logger.error('Error al crear instancia', error);
-    res.status(500).json({ error: error.message || 'Error al crear instancia' });
+    Logger.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      error: error.message || 'Error al crear instancia',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

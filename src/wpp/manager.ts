@@ -115,20 +115,27 @@ export class WPPManager {
             this.sessionStatuses.set(instanceName, status);
             
             // Obtener número de teléfono
-            client.getMe().then((me: any) => {
-              const phone = me.id.user;
-              Logger.info(`[${instanceName}] 📱 Número de teléfono obtenido: ${phone}`);
-              status.phone = phone;
-              this.sessionStatuses.set(instanceName, status);
-              
-              // Actualizar BD con el número
-              db.query(
-                'UPDATE instances SET status = ?, telefono = ?, qr_code = NULL WHERE instance_name = ?',
-                ['connected', phone, instanceName]
-              ).then(() => {
-                Logger.info(`[${instanceName}] ✅ Estado actualizado en BD`);
-              }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al actualizar estado en BD`, err));
-            }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al obtener número`, err));
+            client.getHostDevice().then((device: any) => {
+              const phone = device?.id?.user || device?.wid?.user || null;
+              if (phone) {
+                Logger.info(`[${instanceName}] 📱 Número de teléfono obtenido: ${phone}`);
+                status.phone = phone;
+                this.sessionStatuses.set(instanceName, status);
+                
+                // Actualizar BD con el número
+                db.query(
+                  'UPDATE instances SET status = ?, telefono = ?, qr_code = NULL WHERE instance_name = ?',
+                  ['connected', phone, instanceName]
+                ).then(() => {
+                  Logger.info(`[${instanceName}] ✅ Estado actualizado en BD`);
+                }).catch((err: any) => Logger.error(`[${instanceName}] ❌ Error al actualizar estado en BD`, err));
+              } else {
+                Logger.warn(`[${instanceName}] No se pudo obtener el número de teléfono`);
+              }
+            }).catch((err: any) => {
+              Logger.error(`[${instanceName}] ❌ Error al obtener número`, err);
+              // Continuar sin el número, la sesión está conectada
+            });
           } else if (statusSession === 'notLogged') {
             Logger.info(`[${instanceName}] ⏳ Esperando escaneo de QR`);
             status.status = 'scanning';
@@ -140,7 +147,7 @@ export class WPPManager {
             this.sessionStatuses.set(instanceName, status);
           }
         },
-        headless: 'new',
+        headless: true,
         debug: false,
         useChrome: true,
         puppeteerOptions: {

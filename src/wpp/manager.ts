@@ -1,4 +1,4 @@
-import wppconnect from '@wppconnect-team/wppconnect';
+import * as wppconnect from '@wppconnect-team/wppconnect';
 import path from 'path';
 import fs from 'fs';
 import { Logger } from '../utils/logger';

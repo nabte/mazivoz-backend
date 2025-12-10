@@ -41,7 +41,12 @@ export class WPPManager {
         const sessionPath = path.join(this.sessionsPath, instance.instance_name);
         if (fs.existsSync(sessionPath)) {
           Logger.info(`Sesión encontrada para ${instance.instance_name}, intentando recuperar...`);
-          // La sesión se recuperará automáticamente cuando se cree el cliente
+          try {
+            // Intentar recuperar la sesión automáticamente
+            await this.createSession({ instanceName: instance.instance_name });
+          } catch (err: any) {
+            Logger.warn(`No se pudo recuperar sesión ${instance.instance_name}: ${err.message}`);
+          }
         }
       }
     } catch (error) {

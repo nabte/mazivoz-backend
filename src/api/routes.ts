@@ -136,20 +136,51 @@ router.get('/instances', async (req: Request, res: Response) => {
 router.get('/instances/:name/status', async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
-    const status = wppManager.getSessionStatus(name);
-    const isConnected = await wppManager.isConnected(name);
+    let status = wppManager.getSessionStatus(name);
+    let isConnected = false;
 
+    // Si no hay status en memoria, verificar en BD
     if (!status) {
-      return res.status(404).json({ error: 'Instancia no encontrada' });
+      try {
+        const [instances] = await db.query(
+          'SELECT instance_name, status, telefono FROM instances WHERE instance_name = ?',
+          [name]
+        ) as any[];
+
+        if (instances.length > 0) {
+          const instance = instances[0];
+          // Si está en BD como connected, intentar recuperar sesión
+          if (instance.status === 'connected') {
+            Logger.info(`Instancia ${name} encontrada en BD como connected, intentando recuperar sesión...`);
+            try {
+              status = await wppManager.createSession({ instanceName: name });
+              isConnected = await wppManager.isConnected(name);
+            } catch (err: any) {
+              Logger.warn(`No se pudo recuperar sesión para ${name}, usando estado de BD`);
+              isConnected = true; // Si está en BD como connected, asumir que está conectada
+            }
+          } else {
+            return res.status(404).json({ error: 'Instancia no encontrada o no conectada' });
+          }
+        } else {
+          return res.status(404).json({ error: 'Instancia no encontrada' });
+        }
+      } catch (dbError: any) {
+        Logger.error('Error al consultar BD', dbError);
+        return res.status(500).json({ error: 'Error al consultar base de datos' });
+      }
+    } else {
+      // Si hay status en memoria, verificar conexión real
+      isConnected = await wppManager.isConnected(name);
     }
 
     res.json({
       success: true,
       instance_name: name,
-      status: status.status,
-      phone: status.phone,
+      status: status?.status || 'unknown',
+      phone: status?.phone,
       is_connected: isConnected,
-      last_seen: status.lastSeen
+      last_seen: status?.lastSeen
     });
   } catch (error: any) {
     Logger.error('Error al obtener estado', error);

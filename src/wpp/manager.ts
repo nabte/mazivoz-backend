@@ -162,7 +162,7 @@ export class WPPManager {
             '--disable-gpu'
           ]
         },
-        sessionDataPath: this.sessionsPath,
+        folderNameToken: this.sessionsPath,
         autoClose: 0 // Nunca cerrar automáticamente
       });
 

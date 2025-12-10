@@ -28,11 +28,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
+// Iniciar servidor - escuchar en 0.0.0.0 para ser accesible desde fuera del contenedor
+app.listen(PORT, '0.0.0.0', () => {
   Logger.info(`Servidor WPPConnect iniciado en puerto ${PORT}`);
-  Logger.info(`Health check: http://localhost:${PORT}/health`);
-  Logger.info(`API disponible en: http://localhost:${PORT}/api`);
+  Logger.info(`Health check: http://0.0.0.0:${PORT}/health`);
+  Logger.info(`API disponible en: http://0.0.0.0:${PORT}/api`);
 });
 
 // Manejo de cierre graceful
